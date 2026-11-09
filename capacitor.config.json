@@ -1,0 +1,7 @@
+{
+  "appId": "ir.breastrisk.app",
+  "appName": "ارزیابی خطر پستان",
+  "webDir": "www",
+  "android": { "allowMixedContent": false },
+  "ios": { "contentInset": "always" }
+}

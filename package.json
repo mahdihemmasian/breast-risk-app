@@ -1,0 +1,28 @@
+{
+  "name": "breast-risk-app",
+  "version": "1.0.0",
+  "description": "ارزیابی هوشمند خطر سرطان پستان (مدل Gail/BCRAT + FHS-7) — Android & iOS",
+  "private": true,
+  "scripts": {
+    "test": "node tests/gail.test.js",
+    "add:android": "npx cap add android",
+    "add:ios": "npx cap add ios",
+    "sync": "npx cap sync",
+    "icons": "npx @capacitor/assets generate --iconBackgroundColor '#c2185b' --splashBackgroundColor '#fff7fa'",
+    "apk": "npx cap sync android && cd android && ./gradlew assembleDebug",
+    "apk:release": "npx cap sync android && cd android && ./gradlew assembleRelease",
+    "open:android": "npx cap open android",
+    "open:ios": "npx cap open ios"
+  },
+  "dependencies": {
+    "@capacitor/android": "^7.0.0",
+    "@capacitor/core": "^7.0.0",
+    "@capacitor/filesystem": "^7.0.0",
+    "@capacitor/ios": "^7.0.0",
+    "@capacitor/share": "^7.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
+    "@capacitor/cli": "^7.0.0"
+  }
+}
