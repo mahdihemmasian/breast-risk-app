@@ -214,8 +214,8 @@ def render_preview(path: Path, mode: str = "dicom") -> Image.Image:
     ds = pydicom.dcmread(str(path), force=True)
     frame = read_frames(ds)[0]
     if int(ds.get("SamplesPerPixel", 1) or 1) > 1:
-        return Image.fromarray(_color_to_rgb8(frame, ds), "RGB")
-    return Image.fromarray(_to_display_8bit(frame, ds, mode), "L")
+        return Image.fromarray(np.ascontiguousarray(_color_to_rgb8(frame, ds)))
+    return Image.fromarray(np.ascontiguousarray(_to_display_8bit(frame, ds, mode)))
 
 
 def describe(ds: Dataset) -> str:
@@ -306,9 +306,9 @@ def convert_file(src: Path, out_dir: Path, opts: ConvertOptions, root: Optional[
         for idx, frame in enumerate(frames):
             suffix = f"_f{idx + 1:03d}" if len(frames) > 1 else ""
             if spp > 1:
-                img = Image.fromarray(_color_to_rgb8(frame, ds), "RGB")
+                img = Image.fromarray(np.ascontiguousarray(_color_to_rgb8(frame, ds)))
             else:
-                img = Image.fromarray(_to_display_8bit(frame, ds, opts.window_mode), "L")
+                img = Image.fromarray(np.ascontiguousarray(_to_display_8bit(frame, ds, opts.window_mode)))
 
             jpg = _unique(base.with_name(base.name + suffix + ".jpg"), opts.overwrite)
             save_kw = dict(quality=int(opts.quality), optimize=True)
@@ -325,9 +325,9 @@ def convert_file(src: Path, out_dir: Path, opts: ConvertOptions, root: Optional[
             ext = LOSSLESS_FORMATS.get(opts.lossless_copy)
             if ext:
                 if spp > 1:
-                    lossless = Image.fromarray(np.asarray(img), "RGB")
+                    lossless = img.copy()
                 else:
-                    lossless = Image.fromarray(_to_lossless_16bit(frame, ds), "I;16")
+                    lossless = Image.fromarray(np.ascontiguousarray(_to_lossless_16bit(frame, ds)))
                 lp = _unique(base.with_name(base.name + suffix + ext), opts.overwrite)
                 if ext == ".tif":
                     lossless.save(lp, "TIFF", compression="tiff_adobe_deflate", dpi=dpi or (72, 72))
