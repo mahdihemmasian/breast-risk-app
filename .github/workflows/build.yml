@@ -1,0 +1,72 @@
+name: Build Windows (installer + portable)
+
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt pyinstaller==6.*
+
+      - name: Unit test (source) incl. compressed DICOM transfer syntaxes
+        run: python tests/test_convert.py
+
+      - name: PyInstaller - installable build (one folder)
+        run: >
+          pyinstaller main.py --name DicomToJpeg --windowed --noconfirm --clean
+          --icon assets/app.ico --add-data "assets;assets"
+          --collect-all pydicom --collect-all pylibjpeg --collect-all libjpeg --collect-all openjpeg
+          --collect-all rle --collect-all gdcm --collect-submodules dicom2jpeg
+          --exclude-module PySide6.QtWebEngineCore --exclude-module PySide6.QtWebEngineWidgets
+          --exclude-module PySide6.Qt3DCore --exclude-module PySide6.QtQuick --exclude-module PySide6.QtQml
+          --exclude-module PySide6.QtMultimedia --exclude-module PySide6.QtPdf --exclude-module tkinter
+
+      - name: PyInstaller - portable build (single exe)
+        run: >
+          pyinstaller main.py --name DicomToJpeg_Portable --onefile --windowed --noconfirm
+          --icon assets/app.ico --add-data "assets;assets"
+          --collect-all pydicom --collect-all pylibjpeg --collect-all libjpeg --collect-all openjpeg
+          --collect-all rle --collect-all gdcm --collect-submodules dicom2jpeg
+          --exclude-module PySide6.QtWebEngineCore --exclude-module PySide6.QtWebEngineWidgets
+          --exclude-module PySide6.Qt3DCore --exclude-module PySide6.QtQuick --exclude-module PySide6.QtQml
+          --exclude-module PySide6.QtMultimedia --exclude-module PySide6.QtPdf --exclude-module tkinter
+
+      - name: Smoke test the built exe (CLI mode)
+        shell: pwsh
+        run: |
+          python tests/make_samples.py smoke_in
+          $p = Start-Process dist\DicomToJpeg\DicomToJpeg.exe -ArgumentList '--cli','smoke_in','-o','smoke_out','--lossless','png16' -Wait -PassThru
+          Get-ChildItem smoke_out -Recurse | Select-Object FullName,Length
+          if ((Get-ChildItem smoke_out -Recurse -Filter *.jpg).Count -lt 7) { throw "exe smoke test failed (exit $($p.ExitCode))" }
+          $q = Start-Process dist\DicomToJpeg_Portable.exe -ArgumentList '--cli','smoke_in','-o','smoke_out2' -Wait -PassThru
+          if ((Get-ChildItem smoke_out2 -Recurse -Filter *.jpg).Count -lt 7) { throw "portable smoke test failed" }
+
+      - name: Build installer (Inno Setup)
+        shell: pwsh
+        run: |
+          if (-not (Test-Path "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe")) { choco install innosetup -y --no-progress }
+          & "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe" installer\setup.iss
+
+      - name: Package portable
+        shell: pwsh
+        run: |
+          New-Item -ItemType Directory -Force release | Out-Null
+          Copy-Item dist\DicomToJpeg_Portable.exe release\
+          Compress-Archive -Path dist\DicomToJpeg\* -DestinationPath release\DicomToJpeg_Portable_Folder.zip -Force
+          Get-ChildItem release | Select-Object Name,Length
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DicomToJpeg-Windows
+          path: release/*

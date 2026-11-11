@@ -1,0 +1,9 @@
+pydicom>=3.0
+numpy
+pillow
+PySide6-Essentials>=6.6
+pylibjpeg>=2.0
+pylibjpeg-libjpeg
+pylibjpeg-openjpeg
+pylibjpeg-rle
+python-gdcm
